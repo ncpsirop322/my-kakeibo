@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#172b4d">
+<title>家計簿</title>
+<style>
+:root{--navy:#172b4d;--blue:#3769b1;--bg:#f4f6fa;--card:#fff;--muted:#687386;--line:#e5e9f0;--red:#c43d4b;--green:#16845b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#1c2636;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+header{background:var(--navy);color:white;padding:18px 18px 22px;position:sticky;top:0;z-index:3}
+.head{display:flex;align-items:center;justify-content:space-between;font-weight:750;font-size:20px}
+.monthrow{display:flex;align-items:center;justify-content:center;gap:22px;margin-top:16px}
+.monthrow button{background:#ffffff20;color:white;border:0;border-radius:10px;padding:7px 13px;font-size:18px}
+.monthrow input{background:transparent;color:white;border:0;font-size:17px;font-weight:700;text-align:center;width:150px}
+main{max-width:650px;margin:auto;padding:14px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--card);border-radius:16px;padding:15px;box-shadow:0 2px 10px #182c4a0b}
+.k{font-size:12px;color:var(--muted);margin-bottom:6px}.v{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}.sub{font-size:12px;color:var(--muted);margin-top:5px}
+.section{display:flex;align-items:center;justify-content:space-between;margin:22px 2px 10px;font-weight:750}
+button{font:inherit;cursor:pointer}
+.primary{width:100%;border:0;background:var(--blue);color:#fff;padding:15px;border-radius:14px;font-weight:750;font-size:16px;margin-top:13px;box-shadow:0 4px 12px #3769b133}
+.secondary{border:1px solid var(--line);background:white;color:var(--navy);border-radius:10px;padding:9px 12px;font-size:13px}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{background:white;border-radius:14px;padding:13px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.itemname{font-weight:700}.meta{font-size:12px;color:var(--muted);margin-top:4px}.amount{text-align:right;font-weight:750;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:11px;padding:3px 7px;background:#edf2fa;border-radius:20px;color:#415a7e;margin-left:5px}
+.itemactions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:7px}
+.smallbtn{border:0;background:#f0f2f6;border-radius:8px;padding:6px 10px;font-size:12px;color:#34445e}
+.empty{text-align:center;padding:25px;color:var(--muted);background:white;border-radius:14px;font-size:14px}
+form{display:grid;gap:12px}
+label{font-size:13px;font-weight:650;color:#43516a;display:grid;gap:6px}
+input,select,textarea{width:100%;border:1px solid #d9e0ea;border-radius:11px;padding:12px;font:inherit;background:#fff;color:#1c2636;min-height:44px}
+input[type=number]{font-variant-numeric:tabular-nums}
+.modal{display:none;position:fixed;inset:0;background:#101a2b77;z-index:5;align-items:flex-end;justify-content:center}
+.modal.show{display:flex}
+.sheet{background:var(--bg);width:100%;max-width:650px;max-height:92dvh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom))}
+.sheethead{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:18px;margin-bottom:14px}
+.close{border:0;background:#e6eaf0;border-radius:50%;width:34px;height:34px;font-size:18px}
+.tabs{display:flex;gap:8px;margin:16px 0 4px}
+.tab{flex:1;border:0;border-radius:11px;padding:11px;background:#e7ebf2;color:#536176;font-weight:700}
+.tab.active{background:var(--navy);color:white}
+.panel{display:none}.panel.active{display:block}
+.rowline{display:flex;justify-content:space-between;padding:11px 2px;border-bottom:1px solid var(--line);font-size:14px}
+.rowline strong{font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--muted);line-height:1.55;margin-top:9px}
+.backup{display:flex;gap:8px;flex-wrap:wrap}
+.backup button{flex:1}
+#fileImport{display:none}
+footer{text-align:center;color:#8a93a2;font-size:11px;padding:18px}
+</style>
+</head>
+<body>
+<header>
+ <div class="head"><span>家計簿</span><button class="secondary" id="settingsBtn">データ管理</button></div>
+ <div class="monthrow"><button id="prev">‹</button><input id="month" type="month"><button id="next">›</button></div>
+</header>
+<main>
+ <div id="storageNotice" class="card" style="margin-bottom:12px;border:1px solid #f0d28a;background:#fff9e9;font-size:12px;line-height:1.6">この家計簿はiPhone内のブラウザ保存領域を使います。必ずSafariで開いてください。「ファイル」アプリのプレビューでは正常に動かない場合があります。最初にテスト入力→画面を閉じて再度開き、データが残るか確認してください。定期的にバックアップを書き出してください。</div>
+ <div class="cards">
+  <div class="card"><div class="k">今月の実質支出</div><div class="v" id="netSpend">¥0</div><div class="sub">支払額 − 回収済額</div></div>
+  <div class="card"><div class="k">未回収額</div><div class="v" id="unpaid">¥0</div><div class="sub">友達からの回収待ち</div></div>
+  <div class="card"><div class="k">収入</div><div class="v" id="incomeTotal">¥0</div><div class="sub">今月の登録収入</div></div>
+  <div class="card"><div class="k">収支</div><div class="v" id="balance">¥0</div><div class="sub">収入 − 実質支出</div></div>
+ </div>
+ <button class="primary" id="addExpense">＋ 支出を入力</button>
+ <button class="secondary" style="width:100%;margin-top:8px" id="addIncome">＋ 収入を入力</button>
+ <div class="tabs">
+  <button class="tab active" data-tab="history">明細</button>
+  <button class="tab" data-tab="categories">カテゴリ集計</button>
+ </div>
+ <section class="panel active" id="history">
+  <div class="section"><span>今月の明細</span><span id="count" class="k"></span></div>
+  <div class="list" id="transactions"></div>
+ </section>
+ <section class="panel" id="categories">
+  <div class="section">カテゴリ別・実質支出</div>
+  <div class="card" id="categorySummary"></div>
+ </section>
+ <footer>データはこのブラウザ内に保存されます。定期的にバックアップしてください。</footer>
+</main>
+
+<div class="modal" id="entryModal"><div class="sheet">
+ <div class="sheethead"><span id="formTitle">支出を入力</span><button class="close" data-close>×</button></div>
+ <form id="entryForm">
+  <input type="hidden" id="editId">
+  <label>日付<input type="date" id="date" required></label>
+  <label>カテゴリ<select id="category"></select></label>
+  <label>内容・店名<input id="description" placeholder="例：ホテル代、昼食"></label>
+  <label>支払額（円）<input type="number" id="paid" min="0" step="1" inputmode="numeric" placeholder="0" required></label>
+  <label>回収済額（円）<input type="number" id="recovered" min="0" step="1" inputmode="numeric" placeholder="0" value="0"></label>
+  <div class="card"><div class="k">未回収額（自動計算）</div><div class="v" id="liveUnpaid">¥0</div><div class="note">未回収額は「支払額 − 回収済額」で計算します。回収がない支出は0円のままでOK。</div></div>
+  <label>メモ<input id="memo" placeholder="任意"></label>
+  <button class="primary" type="submit">保存する</button>
+  <button type="button" class="secondary" id="deleteEntry" style="display:none;color:#b42332">この明細を削除</button>
+ </form>
+</div></div>
+
+<div class="modal" id="incomeModal"><div class="sheet">
+ <div class="sheethead"><span>収入を入力</span><button class="close" data-close>×</button></div>
+ <form id="incomeForm">
+  <label>日付<input type="date" id="incomeDate" required></label>
+  <label>内容<input id="incomeDesc" placeholder="例：給料、ボーナス"></label>
+  <label>金額（円）<input type="number" id="incomeAmount" min="0" inputmode="numeric" required></label>
+  <button class="primary" type="submit">保存する</button>
+ </form>
+</div></div>
+
+<div class="modal" id="settingsModal"><div class="sheet">
+ <div class="sheethead"><span>データ管理</span><button class="close" data-close>×</button></div>
+ <div class="card">
+  <strong>バックアップ</strong><p class="note">入力データをJSONファイルとして保存できます。機種変更やブラウザのデータ消去に備えて、定期的に保存してください。</p>
+  <div class="backup"><button class="secondary" id="exportBtn">バックアップを書き出す</button><button class="secondary" id="importBtn">バックアップを読み込む</button></div>
+  <input type="file" id="fileImport" accept="application/json">
+ </div>
+ <p class="note">このファイル単体では、iPhoneの「ファイル」アプリ内に入力データを書き戻せません。データはSafari等のブラウザ保存領域に保存します。ファイルを移動・名前変更したり、ブラウザのデータを消去したりすると、以前の記録を読み込めなくなる場合があります。必ずバックアップを保存してください。</p>
+</div></div>
+<script>
+const CATS=["食費・外食","推し活・ライブ","遠征・宿泊","交通費・ガソリン","車関係","サブスク","日用品","衣服・美容","ゲーム・趣味","交際費","医療","その他"];
+const KEY="simple_household_v1";
+let storageOK=false;
+let data=load();
+let selectedMonth=new Date().toISOString().slice(0,7);
+const $=id=>document.getElementById(id);
+function load(){try{const test="__kakeibo_test__";localStorage.setItem(test,"1");storageOK=localStorage.getItem(test)==="1";localStorage.removeItem(test);return JSON.parse(localStorage.getItem(KEY))||{expenses:[],incomes:[]}}catch(e){storageOK=false;return {expenses:[],incomes:[]}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data));storageOK=true;$("storageNotice").textContent="保存先：このiPhoneのブラウザ内。入力後は保存ボタンを押してください。ブラウザのデータ消去・ファイルの移動や名前変更でデータが消える可能性があるため、定期的にバックアップしてください。";render()}catch(e){storageOK=false;alert("この開き方ではデータを保存できませんでした。Safariで開き直してください。入力内容は保存されていません。");}}
+function yen(n){return "¥"+Math.round(n||0).toLocaleString("ja-JP")}
+function monthOf(d){return (d||"").slice(0,7)}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function openModal(id){$(id).classList.add("show")}
+function closeModals(){$$(".modal").forEach(x=>x.classList.remove("show"))}
+function $$(s){return [...document.querySelectorAll(s)]}
+function init(){
+ if(!storageOK){$("storageNotice").textContent="⚠️ この開き方ではブラウザ保存領域を利用できない可能性があります。Safariで開いてください。保存できるか、少額のテスト入力をして再起動後に確認してください。";}
+ $("month").value=selectedMonth;
+ $("category").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
+ $("date").value=new Date().toISOString().slice(0,10);
+ $("incomeDate").value=$("date").value;
+ render();
+}
+function render(){
+ const ex=data.expenses.filter(x=>monthOf(x.date)===selectedMonth);
+ const inc=data.incomes.filter(x=>monthOf(x.date)===selectedMonth);
+ const spend=ex.reduce((s,x)=>s+x.paid-x.recovered,0);
+ const outstanding=ex.reduce((s,x)=>s+Math.max(0,x.paid-x.recovered),0);
+ const income=inc.reduce((s,x)=>s+x.amount,0);
+ $("netSpend").textContent=yen(spend);$("unpaid").textContent=yen(outstanding);
+ $("incomeTotal").textContent=yen(income);$("balance").textContent=yen(income-spend);
+ $("count").textContent=ex.length+"件";
+ const all=[...ex.map(x=>({...x,type:"expense"})),...inc.map(x=>({...x,type:"income",paid:x.amount,description:x.description||"収入"}))].sort((a,b)=>b.date.localeCompare(a.date));
+ $("transactions").innerHTML=all.length?all.map(x=>`<div class="item">
+ <div><div class="itemname">${esc(x.description|| (x.type==="income"?"収入":"支出"))}${x.type==="expense"?`<span class="pill">${esc(x.category)}</span>`:`<span class="pill">収入</span>`}</div><div class="meta">${esc(x.date)}${x.memo?" ・ "+esc(x.memo):""}${x.type==="expense"&&x.paid>x.recovered?` ・ 未回収 ${yen(x.paid-x.recovered)}`:""}</div></div>
+ <div class="amount">${x.type==="income"?"+": "−"}${yen(x.type==="income"?x.amount:x.paid-x.recovered)}</div>
+ ${x.type==="expense"?`<div class="itemactions"><button class="smallbtn" data-edit="${x.id}">編集</button></div>`:""}
+ </div>`).join(""):`<div class="empty">この月の明細はまだありません</div>`;
+ const totals=CATS.map(c=>({c,v:ex.filter(x=>x.category===c).reduce((s,x)=>s+x.paid-x.recovered,0)})).filter(x=>x.v!==0).sort((a,b)=>b.v-a.v);
+ $("categorySummary").innerHTML=totals.length?totals.map(x=>`<div class="rowline"><span>${esc(x.c)}</span><strong>${yen(x.v)}</strong></div>`).join(""):`<div class="note">まだ支出がありません</div>`;
+}
+function updateUnpaid(){const p=Number($("paid").value)||0,r=Number($("recovered").value)||0;$("liveUnpaid").textContent=yen(Math.max(0,p-r))}
+$("addExpense").onclick=()=>{ $("entryForm").reset();$("editId").value="";$("date").value=selectedMonth+"-"+String(new Date().getDate()).padStart(2,"0");$("formTitle").textContent="支出を入力";$("deleteEntry").style.display="none";updateUnpaid();openModal("entryModal")};
+$("addIncome").onclick=()=>{ $("incomeForm").reset();$("incomeDate").value=new Date().toISOString().slice(0,10);openModal("incomeModal")};
+$("paid").oninput=updateUnpaid;$("recovered").oninput=updateUnpaid;
+$("entryForm").onsubmit=e=>{e.preventDefault();const id=$("editId").value||String(Date.now());const obj={id,date:$("date").value,category:$("category").value,description:$("description").value,paid:Number($("paid").value)||0,recovered:Number($("recovered").value)||0,memo:$("memo").value};if(obj.recovered>obj.paid){alert("回収済額は支払額以下にしてください");return}const i=data.expenses.findIndex(x=>x.id===id);if(i>=0)data.expenses[i]=obj;else data.expenses.push(obj);selectedMonth=monthOf(obj.date);$("month").value=selectedMonth;save();closeModals()};
+$("incomeForm").onsubmit=e=>{e.preventDefault();data.incomes.push({id:String(Date.now()),date:$("incomeDate").value,description:$("incomeDesc").value,amount:Number($("incomeAmount").value)||0});selectedMonth=monthOf($("incomeDate").value);$("month").value=selectedMonth;save();closeModals()};
+$("transactions").onclick=e=>{const b=e.target.closest("[data-edit]");if(!b)return;const x=data.expenses.find(x=>x.id===b.dataset.edit);if(!x)return;$("editId").value=x.id;$("date").value=x.date;$("category").value=x.category;$("description").value=x.description;$("paid").value=x.paid;$("recovered").value=x.recovered;$("memo").value=x.memo||"";$("formTitle").textContent="支出を編集";$("deleteEntry").style.display="block";updateUnpaid();openModal("entryModal")};
+$("deleteEntry").onclick=()=>{const id=$("editId").value;if(confirm("この明細を削除しますか？")){data.expenses=data.expenses.filter(x=>x.id!==id);save();closeModals()}};
+$("month").onchange=()=>{selectedMonth=$("month").value;render()};
+$("prev").onclick=()=>shiftMonth(-1);$("next").onclick=()=>shiftMonth(1);
+function shiftMonth(n){const [y,m]=selectedMonth.split("-").map(Number);const d=new Date(y,m-1+n,1);selectedMonth=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");$("month").value=selectedMonth;render()}
+$$("[data-close]").forEach(b=>b.onclick=closeModals);
+$$(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)closeModals()}));
+$$(".tab").forEach(b=>b.onclick=()=>{$$(".tab").forEach(t=>t.classList.toggle("active",t===b));$$(".panel").forEach(p=>p.classList.toggle("active",p.id===b.dataset.tab))});
+$("settingsBtn").onclick=()=>openModal("settingsModal");
+$("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="家計簿バックアップ_"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(a.href)};
+$("importBtn").onclick=()=>$("fileImport").click();
+$("fileImport").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const v=JSON.parse(await f.text());if(!Array.isArray(v.expenses)||!Array.isArray(v.incomes))throw Error();if(confirm("現在のデータをバックアップ内容で置き換えますか？")){data=v;save();closeModals();alert("読み込みました")}}catch(err){alert("バックアップファイルを読み込めませんでした")}e.target.value=""};
+init();
+</script>
+</body></html>
